@@ -2,7 +2,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { Props } from "../utils/upstream-utils";
 import { google, drive_v3 } from "googleapis";
-import { Readable } from "stream"; // Needed for file content handling
 
 /**
  * Registers Drive-related tools with the MCP server
@@ -133,10 +132,11 @@ export function registerDriveTools(server: McpServer, props: Props) {
         ) {
           const response = await drive.files.get(
             { fileId: fileId, alt: "media" },
-            { responseType: "stream" }
+            { responseType: "arraybuffer" }
           );
-          // Read stream to string (simplified example, might need more robust handling for large files)
-          const content = await streamToString(response.data as Readable);
+          const content = new TextDecoder("utf-8").decode(
+            response.data as ArrayBuffer
+          );
           return {
             content: [
               {
@@ -157,9 +157,11 @@ export function registerDriveTools(server: McpServer, props: Props) {
               : "text/plain";
           const response = await drive.files.export(
             { fileId: fileId, mimeType: exportMimeType },
-            { responseType: "stream" }
+            { responseType: "arraybuffer" }
           );
-          const content = await streamToString(response.data as Readable);
+          const content = new TextDecoder("utf-8").decode(
+            response.data as ArrayBuffer
+          );
           return {
             content: [
               {
@@ -476,12 +478,4 @@ export function registerDriveTools(server: McpServer, props: Props) {
   );
 }
 
-// Helper function to read a stream into a string
-async function streamToString(stream: Readable): Promise<string> {
-  const chunks: Buffer[] = [];
-  return new Promise((resolve, reject) => {
-    stream.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-    stream.on("error", (err) => reject(err));
-    stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-  });
-}
+
